@@ -188,12 +188,21 @@ where
     pub async fn build(self) -> Result<EvmSketch<P, PT>, HostError> {
         let anchor = self.anchor_builder.build(self.block).await?;
         let block_number = anchor.header().number;
-        let previous_block_id = BlockId::number(block_number - 1);
-        let previous_block = self
-            .provider
-            .get_block(previous_block_id)
-            .await?
-            .ok_or_else(|| HostError::BlockNotFoundError(previous_block_id))?;
+        // The parent's state root only seeds the state-transition path of `BasicRpcDb`, which
+        // sp1-cc never uses (calls are served by `eth_getProof` at `block_number`). The genesis
+        // block has no parent, so use its own state root there instead of querying block `-1`.
+        let previous_state_root = match block_number.checked_sub(1) {
+            Some(previous_number) => {
+                let previous_block_id = BlockId::number(previous_number);
+                self.provider
+                    .get_block(previous_block_id)
+                    .await?
+                    .ok_or_else(|| HostError::BlockNotFoundError(previous_block_id))?
+                    .header
+                    .state_root
+            }
+            None => anchor.header().state_root,
+        };
 
         let sketch = EvmSketch {
             genesis: self.genesis,
@@ -201,7 +210,7 @@ where
             rpc_db: BasicRpcDb::new(
                 self.provider.clone(),
                 block_number,
-                previous_block.header.state_root,
+                previous_state_root,
             ),
             receipts: None,
             provider: self.provider,

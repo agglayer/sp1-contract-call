@@ -162,7 +162,7 @@ where
         let oldest_ancestor = *self.rpc_db.oldest_ancestor.read().unwrap();
         let mut ancestor_headers = vec![];
         tracing::info!("fetching {} ancestor headers", block_number - oldest_ancestor);
-        for height in (oldest_ancestor..=(block_number - 1)).rev() {
+        for height in (oldest_ancestor..block_number).rev() {
             let block = self.provider.get_block_by_number(height.into()).full().await?.unwrap();
             ancestor_headers.push(
                 block
