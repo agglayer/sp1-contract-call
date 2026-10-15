@@ -159,6 +159,56 @@ impl Primitives for EthPrimitives {
     }
 }
 
+/// Ethereum EVM execution for chains whose headers do not follow the Ethereum (beacon) consensus
+/// rules, e.g. Besu QBFT/IBFT2 chains (`extraData` carries validators and seals, `difficulty = 1`).
+///
+/// Identical to [`EthPrimitives`] except that [`Primitives::validate_header`] accepts any header.
+/// Skipping it is sound because the sketch's header is bound by the anchor hash (the keccak256 of
+/// the exact header RLP the caller commits to) and its state root is checked against the witness;
+/// Ethereum consensus-format rules add nothing to that binding.
+/// Soundness does not depend on that check: the header is bound to the anchor hash, and the state
+/// root is checked against the witness.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EthLikePrimitives;
+
+impl NodePrimitives for EthLikePrimitives {
+    type Block = <EthPrimitives as NodePrimitives>::Block;
+    type BlockHeader = <EthPrimitives as NodePrimitives>::BlockHeader;
+    type BlockBody = <EthPrimitives as NodePrimitives>::BlockBody;
+    type SignedTx = <EthPrimitives as NodePrimitives>::SignedTx;
+    type Receipt = <EthPrimitives as NodePrimitives>::Receipt;
+}
+
+impl Primitives for EthLikePrimitives {
+    type ChainSpec = <EthPrimitives as Primitives>::ChainSpec;
+    type HaltReason = <EthPrimitives as Primitives>::HaltReason;
+
+    fn build_spec(genesis: &Genesis) -> Result<Arc<Self::ChainSpec>, ClientError> {
+        <EthPrimitives as Primitives>::build_spec(genesis)
+    }
+
+    fn validate_header(
+        _header: &SealedHeader,
+        _chain_spec: Arc<Self::ChainSpec>,
+    ) -> Result<(), ConsensusError> {
+        Ok(())
+    }
+
+    fn transact<DB: Database>(
+        input: &ContractInput,
+        db: DB,
+        header: &Header,
+        difficulty: U256,
+        chain_spec: Arc<Self::ChainSpec>,
+    ) -> Result<ResultAndState<Self::HaltReason>, String> {
+        <EthPrimitives as Primitives>::transact(input, db, header, difficulty, chain_spec)
+    }
+
+    fn active_fork_name(chain_spec: &Self::ChainSpec, header: &Header) -> String {
+        <EthPrimitives as Primitives>::active_fork_name(chain_spec, header)
+    }
+}
+
 #[cfg(feature = "optimism")]
 impl Primitives for reth_optimism_primitives::OpPrimitives {
     type ChainSpec = reth_optimism_chainspec::OpChainSpec;

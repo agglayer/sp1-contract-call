@@ -215,6 +215,14 @@ impl<'a> ClientExecutor<'a, EthPrimitives> {
     }
 }
 
+impl<'a> ClientExecutor<'a, io::EthLikePrimitives> {
+    /// Instantiates a new [`ClientExecutor`] for an Ethereum-like chain whose headers are not
+    /// valid under Ethereum consensus rules (e.g. Besu QBFT). Header validation is skipped.
+    pub fn eth_like(state_sketch: &'a EvmSketchInput) -> Result<Self, ClientError> {
+        Self::new(state_sketch)
+    }
+}
+
 #[cfg(feature = "optimism")]
 impl<'a> ClientExecutor<'a, reth_optimism_primitives::OpPrimitives> {
     /// Instantiates a new [`ClientExecutor`]

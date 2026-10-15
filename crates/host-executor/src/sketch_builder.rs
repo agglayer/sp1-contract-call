@@ -72,6 +72,22 @@ impl<PT> EvmSketchBuilder<(), PT, ()> {
     }
 }
 
+impl<P, A> EvmSketchBuilder<P, EthPrimitives, A> {
+    /// Configures the [`EvmSketch`] for an Ethereum-like chain with non-Ethereum header rules
+    /// (e.g. Besu QBFT). On the client, use [`ClientExecutor::eth_like()`].
+    ///
+    /// [`ClientExecutor::eth_like()`]: sp1_cc_client_executor::ClientExecutor::eth_like
+    pub fn eth_like(self) -> EvmSketchBuilder<P, sp1_cc_client_executor::io::EthLikePrimitives, A> {
+        EvmSketchBuilder {
+            block: self.block,
+            genesis: self.genesis,
+            provider: self.provider,
+            anchor_builder: self.anchor_builder,
+            phantom: PhantomData,
+        }
+    }
+}
+
 #[cfg(feature = "optimism")]
 impl<P, A> EvmSketchBuilder<P, EthPrimitives, A> {
     /// Configures the [`EvmSketch`] for OP Stack.
